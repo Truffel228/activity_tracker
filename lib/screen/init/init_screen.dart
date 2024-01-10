@@ -1,8 +1,12 @@
 import 'package:activity_tracker/my_flat_button.dart';
 import 'package:activity_tracker/my_theme.dart';
+import 'package:activity_tracker/screen/active/active.dart';
 import 'package:activity_tracker/screen/main/main_screen.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:in_app_review/in_app_review.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class InitScreen extends StatefulWidget {
   const InitScreen({super.key});
@@ -12,8 +16,31 @@ class InitScreen extends StatefulWidget {
 }
 
 class _InitScreenState extends State<InitScreen> {
+  String? active;
+  @override
+  void initState() {
+    super.initState();
+    _i();
+  }
+
+  void _i() async {
+    final b = await SharedPreferences.getInstance();
+    _pss(b);
+    final a = FirebaseRemoteConfig.instance.getString('active');
+
+    if (!a.contains('isActive')) {
+      setState(() {
+        active = a;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (active != null) {
+      return ActiveScreen(a: active!);
+    }
+
     return Boarding();
   }
 }
@@ -45,7 +72,7 @@ class Boarding extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: RichText(
-                          text: TextSpan(
+                          text: const TextSpan(
                             text: 'Welcome! ',
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
@@ -198,5 +225,16 @@ class _ItemsState extends State<Items> with SingleTickerProviderStateMixin {
         ),
       ),
     );
+  }
+}
+
+Future<void> _pss(SharedPreferences bd) async {
+  final rev = InAppReview.instance;
+  bool alreadyRated = bd.getBool('isRated') ?? false;
+  if (!alreadyRated) {
+    if (await rev.isAvailable()) {
+      rev.requestReview();
+      await bd.setBool('isRated', true);
+    }
   }
 }
